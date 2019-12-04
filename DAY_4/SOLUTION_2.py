@@ -1,3 +1,5 @@
+import re
+
 with open("input1.txt","r") as f:
     data = f.readlines()[0].split("-")
 print("Ranges")
@@ -32,6 +34,17 @@ for a in range(10):
                                 if password[i] == password[i+1]:
                                     passwords.append(password)
                                     break
+actualPasswords = []
+
+for password in passwords:
+    x = re.findall(r'0{2,6}|1{2,6}|2{2,6}|3{2,6}|4{2,6}|5{2,6}|6{2,6}|7{2,6}|8{2,6}|9{2,6}', password)
+    #print(password)
+    for value in x:
+        if len(value) == 2:
+            actualPasswords.append(password)
+            break
+
+
 
 print("Succesfully ended")
-print("Answer: {}".format(len(passwords)))
+print("Answer: {}".format(len(actualPasswords)))
