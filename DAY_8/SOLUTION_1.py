@@ -1,31 +1,21 @@
 with open("input1.txt","r") as f:
     data = f.readlines()[0]
 layers=[]
-for i in range((25*6)//len(data)):
-    layerToAdd = []
-    for j in range(25*6):
-        layerToAdd.append(data[j])
-    layers.append(layerToAdd)
+for i in range(len(data)//(25*6)):
+    print("On {}".format(i))
+    info = data[i*25*6:i*25*6+25*6]
+    print(info)
+    layers.append(info)
 
 minCount = 999999
 minIndex = -1
 for i in range(len(layers)):
     layer = layers[i]
-    count = 0
-    for character in layer:
-        if int(character) == 0:
-            count+=1
+    count = layer.count("0")
     if count<minCount:
         minCount = count
         minIndex = i
 print(minIndex)
 
-layerToCalculate = layers[minIndex]
-twoCount = 0
-oneCount = 0
-for character in layer:
-    if int(character) == 1:
-        oneCount+=1
-    if int(character) == 2:
-        twoCount+=1
-print(oneCount*twoCount)
+layer = layers[minIndex]
+print(layer.count("1")*layer.count("2"))
