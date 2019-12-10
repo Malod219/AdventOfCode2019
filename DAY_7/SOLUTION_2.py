@@ -1,7 +1,6 @@
-import copy
 from enum import Enum
 from itertools import permutations
-
+from collections import defaultdict
 class Opcodes(Enum):
     ADD = 1
     MULTIPLY = 2
@@ -13,153 +12,135 @@ class Opcodes(Enum):
     EQUALS = 8
     HALT = 99
 
-class Mode(Enum):
-    POSITION = 0,
-    IMMEDIATE = 1,
-
-instructionCount = {
-        Opcodes.JTRUE: 3,
-        Opcodes.JFALSE: 3,
-        Opcodes.LESSTHAN: 4,
-        Opcodes.EQUALS: 4,
-        Opcodes.ADD: 4,
-        Opcodes.MULTIPLY: 4,
-        Opcodes.INPUT: 2,
-        Opcodes.OUTPUT: 2,
-        Opcodes.HALT: 1
-        }
-# Get data, and save it
 with open("input1.txt","r") as f:
     data = f.readlines()[0].replace("\n","").split(',')
 
-data = list(map(int, data))
+dataDict = defaultdict(int)
 
-originalMemory = copy.deepcopy(data)
+for i in range(len(data)):
+    dataDict.update({i: int(data[i])})
 
-def readOpcodeInfo(opcode):
-    # It will be an integer at this point, so for convenience
-    # Of slicing we make it a string
-    result = ["0", "0", "0", "-1"]
-    if opcode > 100:
-        opcode, params = opcode%100, opcode//100
-        result[3] = opcode
-        result[2] = params % 10
-        params//=10
-        result[1] = params % 10
-        params//=10
-        result[0]=params%10
+def getOperation(value):
+    m1 = 0
+    m2 = 0
+    m3 = 0
+    opcode = 0
+    value = str(value).zfill(5)
+    opcode = int(value[3:])
+    m1 = int(value[2])
+    m2 = int(value[1])
+    m3 = int(value[0])
+    # In order, I.E. 01104
+    # m1 is 1, m2 is 1, m3 is 0, opcode is 04
+    return m3, m2, m1, opcode
+
+def getValue(dataDict, pc, mode):
+    if mode == 0:
+        return dataDict.get(dataDict.get(pc))
+    elif mode == 1:
+        return dataDict.get(pc)
+
+def add(dataDict, pc, modes):
+    result = {dataDict[pc+3]: getValue(dataDict, pc+1, modes[0])+getValue(dataDict, pc+2, modes[1])}
+    dataDict.update(result)
+    pc+=4
+    return dataDict, pc
+
+def multiply(dataDict, pc, modes):
+    result = {dataDict[pc+3]: getValue(dataDict, pc+1, modes[0])*getValue(dataDict, pc+2, modes[1])}
+    dataDict.update(result)
+    pc+=4
+    return dataDict, pc
+
+def jtrue(dataDict, pc, modes):
+    result = getValue(dataDict, pc+1, modes[0])
+    if result !=0:
+        pc = getValue(dataDict, pc+2, modes[1])
     else:
-        result[3]=opcode
-        result[2]=0
-        result[1]=0
-        result[0]=0
-    #print(result)
-    return result
+        pc+=3
+    return pc
 
-def getValue(mode, readPosition):
-    if mode == Mode.POSITION:
-        return data[data[readPosition]]
-    elif mode == Mode.IMMEDIATE:
-        return data[readPosition]
+def jfalse(dataDict, pc, modes):
+    result = getValue(dataDict, pc+1, modes[0])
+    if result ==0:
+        pc = getValue(dataDict, pc+2, modes[1])
+    else:
+        pc+=3
+    return pc
 
+def lessthan(dataDict, pc, modes):
+    result  = getValue(dataDict, pc+1, modes[0])
+    result2 = getValue(dataDict, pc+2, modes[1])
+    if result < result2:
+        value = {dataDict[pc+3]: 1}
+    else:
+        value = {dataDict[pc+3]: 0}
+    pc+=4
+    dataDict.update(value)
+    return dataDict, pc
 
-# Compute with opcodes
-def compute(data, q, readPoint):
+def equals(dataDict, pc, modes):
+    result  = getValue(dataDict, pc+1, modes[0])
+    result2 = getValue(dataDict, pc+2, modes[1])
+    if result == result2:
+        value = {dataDict[pc+3]: 1}
+    else:
+        value = {dataDict[pc+3]: 0}
+    pc+=4
+    dataDict.update(value)
+    return dataDict, pc
+# Output defined as datDict, pc, value
+def compute(dataDict, pc, inputs):
     while(True):
-        addInstructionCount = True
-        statusMode = [Mode.POSITION for x in range(3)]
-        # Need to get OPCODE data
-        opcodeData = readOpcodeInfo(data[readPoint])
-        #print("STEP\n\tOpcode:{}\n\tReadpoint:{}\n\tNext 4 data values: {}, {}, {}, {}".format(opcodeData[3], readPoint, data[readPoint], data[readPoint+1], data[readPoint+2], data[readPoint+3]))
-        opcode = Opcodes(opcodeData[3])
-        # Set status mode enums
-        # Parameter 3
-        if opcodeData[0] == 1:
-            statusMode[2] = Mode.IMMEDIATE
-        # Parameter 2
-        if opcodeData[1] == 1:
-            statusMode[1] = Mode.IMMEDIATE
-        # Parameter 1
-        if opcodeData[2] == 1:
-            statusMode[0] = Mode.IMMEDIATE
-
-        # We now have the mode. Must rewrite below opcodes into their own functions taking in the opcodeData as input
-        result = None
-        if (opcode == Opcodes.HALT):
-            return data, None, readPoint
-        elif (opcode == Opcodes.ADD):
-            result = getValue(statusMode[0], readPoint+1) + getValue(statusMode[1], readPoint+2)
-            data[data[readPoint+3]] = result
-
-        elif (opcode == Opcodes.MULTIPLY):
-            result = getValue(statusMode[0], readPoint+1) * getValue(statusMode[1], readPoint+2)
-            data[data[readPoint+3]] = result
-
-        elif (opcode == Opcodes.INPUT):
-            #data[data[readPoint+1]] = int(input("INTCOMPUTER INPUT > "))
-            data[data[readPoint+1]] = q[0]
-            q.pop(0)
-
-        elif (opcode == Opcodes.OUTPUT):
-            #print(data[data[readPoint+1]])
-            outVal = data[data[readPoint+1]]
-            readPoint+=2
-            return data[:], outVal, readPoint
-
-        elif opcode == Opcodes.JTRUE:
-            result = getValue(statusMode[0], readPoint+1)
-            if result != 0:
-                addInstructionCount = False
-                readPoint = getValue(statusMode[1],readPoint+2)#data[readPoint+2]
-
-        elif opcode == Opcodes.JFALSE:
-            result = getValue(statusMode[0], readPoint+1)
-            if result == 0:
-                addInstructionCount = False
-                readPoint = getValue(statusMode[1], readPoint+2)#data[readPoint+2]
-
-        elif opcode == Opcodes.LESSTHAN:
-            result = getValue(statusMode[0], readPoint+1) < getValue(statusMode[1], readPoint+2)
-            if result:
-                data[data[readPoint+3]] = 1
-            else:
-                data[data[readPoint+3]] = 0
-
-        elif opcode == Opcodes.EQUALS:
-            result = getValue(statusMode[0], readPoint+1) == getValue(statusMode[1], readPoint+2)
-            if result:
-                data[data[readPoint+3]] = 1
-            else:
-                data[data[readPoint+3]] = 0
-
+        m3, m2, m1, opcode = getOperation(dataDict[pc])
+        modes = [m1, m2, m3]
+        converted = [m1, m2, m3, opcode]
+        #print("Got {}, converted: {}".format(dataDict[pc], converted))
+        #print("Opcode: {}, PC: {}, MODES: {}".format(Opcodes(opcode), pc, modes))
+        if Opcodes(opcode) == Opcodes.HALT:
+            return dataDict, pc, None
+        elif Opcodes(opcode) == Opcodes.INPUT:
+            value = {dataDict[pc+1]: inputs[0]}
+            inputs.pop(0)
+            dataDict.update(value)
+            pc+=2
+        elif Opcodes(opcode) == Opcodes.OUTPUT:
+            return dataDict, pc+2, dataDict[dataDict[pc+1]]
+        elif Opcodes(opcode) == Opcodes.ADD:
+            dataDict, pc = add(dataDict, pc, modes)
+        elif Opcodes(opcode) == Opcodes.MULTIPLY:
+            dataDict, pc = multiply(dataDict, pc, modes)
+        elif Opcodes(opcode) == Opcodes.JTRUE:
+            pc = jtrue(dataDict, pc, modes)
+        elif Opcodes(opcode) == Opcodes.JFALSE:
+            pc = jfalse(dataDict, pc, modes)
+        elif Opcodes(opcode) == Opcodes.LESSTHAN:
+            dataDict, pc = lessthan(dataDict, pc, modes)
+        elif Opcodes(opcode) == Opcodes.EQUALS:
+            dataDict, pc = equals(dataDict, pc, modes)
         else:
-            #pass
-            print("ERROR, Invalid opcode!")
+            print("INVALID OPCODE!")
 
-        if addInstructionCount:
-            readPoint+=instructionCount.get(opcode)
-data = copy.deepcopy(originalMemory)
-#compute(data, 0)
+phaseSettings = permutations([5,6,7,8,9])
+maxThrusterSignal = 0
 
-phase = permutations([5,6,7,8,9])
-m = 0
-for perm in phase:
-    IP = [0] * len(perm)
-    VAL = [0] * len(perm)
-    QUE = [[perm[i]] for i in range(len(perm))]
-    QUE[0].append(0)
-    seq = [data[:]] * len(perm)
-    done = False
-    while not done:
-        for i in range(len(perm)):
-            seq[i], val, new_ip = compute(seq[i], QUE[i], IP[i])
-            if val is None:
-                if VAL[-1] > m:
-                    m = VAL[-1]
-                done = True
-                break
-            IP[i] = new_ip
-            VAL[i] = val
-            QUE[(i+1) % len(QUE)].append(val)
+for phaseConfig in phaseSettings:
+    amplifierData = [dataDict.copy() for x in range(5)]
+    amplifierPcs = [0 for x in range(5)]
+    amplifierInputs = [[phaseConfig[x]] for x in range(5)]
+    amplifierInputs[0].append(0)
+    halted = False
+    finalVal = 0
+    while not halted:
+        for x in range(4):
+            amplifierData[x], amplifierPcs[x], value = compute(amplifierData[x], amplifierPcs[x], amplifierInputs[x])
+            amplifierInputs[x+1].append(value)
+        amplifierData[4], amplifierPcs[4], outputVal = compute(amplifierData[4], amplifierPcs[4], amplifierInputs[4])
+        if outputVal is None:
+            halted = True
+        else:
+            finalVal = outputVal
+            amplifierInputs[0].append(outputVal)
+    maxThrusterSignal = max(maxThrusterSignal, finalVal)
 
-print(m)
+print(maxThrusterSignal)
