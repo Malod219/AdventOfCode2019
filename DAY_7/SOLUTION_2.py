@@ -1,5 +1,6 @@
 from enum import Enum
 from itertools import permutations
+from collections import defaultdict
 
 class Opcodes(Enum):
     ADD = 1
@@ -15,7 +16,7 @@ class Opcodes(Enum):
 with open("input1.txt","r") as f:
     data = f.readlines()[0].replace("\n","").split(',')
 
-dataDict = {}
+dataDict = defaultdict(int)
 
 for i in range(len(data)):
     dataDict.update({i: int(data[i])})
