@@ -22,3 +22,10 @@ for i in range(len(points)):
         if i==j:
             continue
         newPoint = points[j]
+        for k in range(len(points)):
+            if k == i or k == j:
+                continue
+            newPoint2 = points[k]
+            # (y2-y1)(x3-x1)=(y3-y1)*(x2-x1)
+            grad1 = (newPoint[1] - point[1])*(newPoint2[0]-point[0])
+            grad2 = (newPoint2[1]-point[1])*(newPoint[0]-point[0])
