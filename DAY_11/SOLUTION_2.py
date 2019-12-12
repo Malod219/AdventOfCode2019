@@ -165,7 +165,7 @@ class Directions(Enum):
 botPosition = [0, 0]
 botDirection = 0
 #positionsPainted = []
-panels = {(0, 0): 0}
+panels = {(0, 0): 1}
 while not halted:
     #print(panel[botPosition[1]][botPosition[0]])
     inputs.append(panels.get((botPosition[0],botPosition[1]), 0))
@@ -194,4 +194,16 @@ while not halted:
         botPosition[0] -=1
     if Directions(botDirection%4) == Directions.RIGHT:
         botPosition[0] +=1
-print(len(panels))
+output = [[' ' for x in range(50)] for y in range(10)]
+
+for key, value in panels.items():
+    if value == 1:
+        out = '#'
+    else:
+        out = ' '
+    output[key[1]][key[0]] = out
+finalOutput = ""
+for row in output:
+    finalOutput+="".join(row)+"\n"
+
+print(finalOutput)
